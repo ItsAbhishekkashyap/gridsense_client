@@ -1,0 +1,75 @@
+Directory structure:
+└── client/
+    ├── next-env.d.ts
+    ├── next.config.js
+    ├── package.json
+    ├── postcss.config.js
+    ├── tailwind.config.js
+    ├── tsconfig.json
+    ├── .env.local
+    ├── app/
+    │   ├── globals.css
+    │   ├── layout.tsx
+    │   ├── page.tsx
+    │   ├── (auth)/
+    │   │   ├── layout.tsx
+    │   │   ├── login/
+    │   │   │   └── page.tsx
+    │   │   └── signup/
+    │   │       └── page.tsx
+    │   └── (dashboard)/
+    │       ├── layout.tsx
+    │       └── dashboard/
+    │           ├── page.tsx
+    │           ├── alerts/
+    │           │   └── page.tsx
+    │           ├── billing/
+    │           │   └── page.tsx
+    │           ├── panels/
+    │           │   └── [id]/
+    │           │       └── page.tsx
+    │           ├── reports/
+    │           │   └── page.tsx
+    │           └── settings/
+    │               └── page.tsx
+    ├── components/
+    │   ├── auth/
+    │   │   ├── LoginForm.tsx
+    │   │   └── SignupForm.tsx
+    │   ├── dashboard/
+    │   │   ├── AlertPanel.tsx
+    │   │   ├── EnergyChart.tsx
+    │   │   ├── LiveIndicator.tsx
+    │   │   ├── PanelCard.tsx
+    │   │   ├── PanelGrid.tsx
+    │   │   ├── SimulatedBanner.tsx
+    │   │   └── StatsBar.tsx
+    │   ├── panels/
+    │   │   ├── AIAnalysisCard.tsx
+    │   │   ├── AlertHistory.tsx
+    │   │   ├── LifespanTracker.tsx
+    │   │   ├── PanelDetail.tsx
+    │   │   └── ReadingsChart.tsx
+    │   ├── payment/
+    │   │   └── UpgradeModal.tsx
+    │   └── ui/
+    │       ├── Badge.tsx
+    │       ├── Button.tsx
+    │       ├── Card.tsx
+    │       ├── Input.tsx
+    │       ├── LiveIndicator.tsx
+    │       ├── Loader.tsx
+    │       ├── Navbar.tsx
+    │       ├── Sidebar.tsx
+    │       └── Toast.tsx
+    ├── hooks/
+    │   ├── useAuth.ts
+    │   ├── usePanels.ts
+    │   └── useSocket.ts
+    ├── lib/
+    │   ├── api.ts
+    │   ├── auth.ts
+    │   ├── socket.ts
+    │   └── utils.ts
+    └── types/
+        └── index.ts
