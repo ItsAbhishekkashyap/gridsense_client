@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Sparkles, Activity } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useSocket } from '../../../hooks/useSocket';
 import { usePanels } from '../../../hooks/usePanels';
@@ -59,65 +59,78 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center justify-center h-80 gap-3">
         <Loader size="lg" />
+        <p className="text-sm font-semibold text-slate-400 animate-pulse">Initializing GridSense Telemetry...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-7 pb-10">
       <SimulatedBanner />
 
       {/* Subscription expiry banners */}
       {planExpired && (
-        <div className="flex items-center justify-between gap-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+        <div className="flex items-center justify-between gap-4 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl backdrop-blur-md shadow-lg shadow-rose-950/20">
           <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-            <p className="text-sm text-red-300">
-              Your plan has expired. You are now on the Free plan.
+            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+            <p className="text-sm font-semibold text-rose-200">
+              Your plan has expired. You are currently on the Free plan tier.
             </p>
           </div>
           <Link
             href="/dashboard/billing"
-            className="flex-shrink-0 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg transition-colors"
+            className="shrink-0 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 px-4 py-2 rounded-xl transition-all shadow-md shadow-rose-950/40"
           >
-            Renew Now
+            Upgrade Plan
           </Link>
         </div>
       )}
 
       {!planExpired && expiryNotice && (
-        <div className="flex items-center justify-between gap-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+        <div className="flex items-center justify-between gap-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
-            <p className="text-sm text-yellow-300">{expiryNotice.message}</p>
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <p className="text-sm font-semibold text-amber-200">{expiryNotice.message}</p>
           </div>
           <Link
             href="/dashboard/billing"
-            className="flex-shrink-0 text-sm font-semibold text-white bg-yellow-500 hover:bg-yellow-600 px-4 py-1.5 rounded-lg transition-colors"
+            className="shrink-0 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-xl transition-all shadow-md"
           >
-            Renew Now
+            Renew Subscription
           </Link>
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel rounded-2xl p-6 border border-slate-800/80">
         <div>
-          <h1 className="text-2xl font-bold text-white">Solar Dashboard</h1>
-          <p className="text-sm text-gray-500">{panels.length} panels monitored</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-black text-slate-100 tracking-tight">Solar Telemetry Dashboard</h1>
+            <span className="text-xs font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              REAL-TIME
+            </span>
+          </div>
+          <p className="text-sm font-medium text-slate-400 mt-1">
+            Monitoring <span className="text-slate-200 font-bold">{panels.length} active solar arrays</span> across grid section A.
+          </p>
         </div>
-        <LiveIndicator isConnected={isConnected} />
+        <div className="flex items-center gap-3 shrink-0">
+          <LiveIndicator isConnected={isConnected} />
+        </div>
       </div>
 
+      {/* Metrics Row */}
       <StatsBar stats={stats} />
 
+      {/* Main Grid Section */}
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <PanelGrid panels={panels} readings={readings} alerts={alerts} />
           <EnergyChart panels={panels} readingsHistory={readingsHistory} />
         </div>
-        <div>
+        <div className="lg:col-span-1">
           <AlertPanel alerts={alerts} />
         </div>
       </div>

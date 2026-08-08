@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
 import { Navbar } from '../../components/ui/Navbar';
 import { PageLoader } from '../../components/ui/Loader';
+import { CopilotChat } from '../../components/CopilotChat';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -20,11 +21,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return <PageLoader />;
 
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <div className="min-h-screen bg-bg-primary relative">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
         {children}
       </main>
+      <CopilotChat />
     </div>
   );
 }
