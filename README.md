@@ -8,26 +8,26 @@
 
 ```mermaid
 flowchart TB
-    subgraph Core ["Next.js 15 App Router Layer"]
-        Layout["Root Layout (Plus Jakarta Sans Font)"]
-        DashboardPage["Dashboard Page (/dashboard)"]
-        PanelsPage["Panel Details Page (/dashboard/panels/[id])"]
-        BillingPage["Billing Page (/dashboard/billing)"]
+    subgraph Core ["Next.js App Router Layer"]
+        Layout["Root Layout - Plus Jakarta Sans Font"]
+        DashboardPage["Dashboard Page - /dashboard"]
+        PanelsPage["Panel Details Page - /dashboard/panels/id"]
+        BillingPage["Billing Page - /dashboard/billing"]
     end
 
     subgraph StateAndHooks ["Custom Hooks & State Hydration"]
-        AuthHook["useAuth Hook (JWT Token Management)"]
-        SocketHook["useSocket Hook (WebSocket Connection)"]
-        PanelsHook["usePanels Hook (Real-time Telemetry Buffer)"]
+        AuthHook["useAuth Hook - JWT Token Management"]
+        SocketHook["useSocket Hook - WebSocket Connection"]
+        PanelsHook["usePanels Hook - Real-time Telemetry Buffer"]
     end
 
     subgraph Components ["Glassmorphic Component Architecture"]
-        StatsBar["StatsBar Component (Glowing Radial Badges)"]
-        PanelGrid["PanelGrid & PanelCard Component (Efficiency Bars)"]
-        AlertFeed["AlertPanel Component (Active Fault Feed)"]
-        EnergyChart["EnergyChart Component (Recharts Power Curves)"]
-        CopilotWidget["CopilotChat Widget (Glassmorphic AI Drawer)"]
-      End
+        StatsBar["StatsBar Component - Glowing Radial Badges"]
+        PanelGrid["PanelGrid & PanelCard Component - Efficiency Bars"]
+        AlertFeed["AlertPanel Component - Active Fault Feed"]
+        EnergyChart["EnergyChart Component - Recharts Power Curves"]
+        CopilotWidget["CopilotChat Widget - Glassmorphic AI Drawer"]
+    end
 
     Layout --> AuthHook
     AuthHook --> SocketHook
