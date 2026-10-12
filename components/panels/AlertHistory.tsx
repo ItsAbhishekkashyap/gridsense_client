@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { Alert } from '../../types';
-import { Card, CardHeader, CardTitle } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { alertApi } from '../../lib/api';
 import { toast } from '../ui/Toast';
@@ -56,61 +54,44 @@ export function AlertHistory({ alerts, onAlertsChange }: AlertHistoryProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Alert History</CardTitle>
-        <span className="text-xs text-gray-500">{localAlerts.length} alerts</span>
-      </CardHeader>
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {localAlerts.length === 0 ? (
-          <div className="text-center py-6 text-sm text-gray-500">No alerts recorded</div>
-        ) : (
-          localAlerts.map((alert) => {
-            const Icon = alert.severity === 'CRITICAL' || alert.severity === 'WARNING' ? AlertTriangle : Info;
-            const color = alert.resolved ? 'text-gray-500' : alert.severity === 'CRITICAL' ? 'text-red-400' : 'text-yellow-400';
-            return (
-              <div key={alert.id} className="flex items-start gap-3 p-3 bg-bg-secondary rounded-lg">
-                <div className={`mt-0.5 ${color}`}>
-                  {alert.resolved ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Icon className="w-4 h-4" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <p className={`text-xs font-medium ${alert.resolved ? 'text-gray-500' : 'text-white'}`}>
-                      {alert.title}
-                    </p>
-                    <Badge variant={alert.resolved ? 'default' : alert.severity === 'CRITICAL' ? 'critical' : 'warning'}>
-                      {alert.resolved ? 'Resolved' : alert.severity}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-gray-600">
-                    {timeAgo(alert.createdAt)}
-                    {alert.resolved && alert.resolvedAt && ` · Resolved ${timeAgo(alert.resolvedAt)}`}
-                  </p>
-                  <div className="mt-1.5">
-                    {!alert.resolved ? (
-                      <button
-                        onClick={() => handleResolve(alert.id)}
-                        disabled={loadingId === alert.id}
-                        className="text-xs text-orange-400 border border-orange-400/40 rounded px-2 py-0.5 hover:bg-orange-400/10 disabled:opacity-50 transition-colors"
-                      >
-                        {loadingId === alert.id ? 'Saving…' : 'Resolve'}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleUnresolve(alert.id)}
-                        disabled={loadingId === alert.id}
-                        className="text-xs text-gray-400 border border-gray-600 rounded px-2 py-0.5 hover:bg-gray-700/30 disabled:opacity-50 transition-colors"
-                      >
-                        {loadingId === alert.id ? 'Saving…' : 'Mark Unresolved'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+    <section aria-labelledby="alert-history" className="mt-10">
+      <div className="flex items-end justify-between">
+        <h2 id="alert-history" className="text-2xl font-bold tracking-[-.02em]">Alert history</h2>
+        <span className="font-mono text-[11px] uppercase tracking-[.08em] text-dim">{localAlerts.length} records</span>
       </div>
-    </Card>
+      {localAlerts.length === 0 ? (
+        <p className="mt-4 border-t border-line py-8 text-center text-sm text-muted">No alerts recorded</p>
+      ) : (
+        <ul data-stagger className="mt-4 border-b border-line">
+          {localAlerts.map((alert) => (
+            <li key={alert.id} className={`grid gap-3 border-t border-line py-4 sm:grid-cols-[110px_1fr_160px_130px] sm:items-center ${alert.resolved ? 'opacity-60' : ''}`}>
+              <span>
+                <Badge variant={alert.resolved ? 'success' : alert.severity === 'CRITICAL' ? 'critical' : alert.severity === 'WARNING' ? 'warning' : 'info'}>
+                  {alert.resolved ? 'Resolved' : alert.severity}
+                </Badge>
+              </span>
+              <div className="min-w-0">
+                <p className="font-medium">{alert.title}</p>
+                {alert.actionRequired && !alert.resolved && <p className="mt-0.5 text-[13px] text-muted">{alert.actionRequired}</p>}
+              </div>
+              <p className="font-mono text-[11px] uppercase tracking-[.08em] text-muted">
+                {timeAgo(alert.createdAt)}
+                {alert.resolved && alert.resolvedAt && ` · fixed ${timeAgo(alert.resolvedAt)}`}
+              </p>
+              <div className="sm:text-right">
+                <button
+                  type="button"
+                  onClick={() => (alert.resolved ? handleUnresolve(alert.id) : handleResolve(alert.id))}
+                  disabled={loadingId === alert.id}
+                  className={`h-9 rounded-full px-4 text-[13px] font-semibold transition-colors disabled:opacity-50 ${alert.resolved ? 'border border-bone/20 text-muted hover:text-bone' : 'border border-bone/25 hover:bg-bone hover:text-ink'}`}
+                >
+                  {loadingId === alert.id ? 'Saving…' : alert.resolved ? 'Mark unresolved' : 'Resolve'}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CreditCard, Check, RefreshCw, AlertCircle } from 'lucide-react';
+import { Check, RefreshCw, AlertCircle } from 'lucide-react';
 import { paymentApi } from '../../../../lib/api';
 import { useAuth } from '../../../../hooks/useAuth';
-import { Card, CardHeader, CardTitle } from '../../../../components/ui/Card';
+import { TopBar } from '../../../../components/app/PageHeader';
 import { Badge } from '../../../../components/ui/Badge';
 import { Button } from '../../../../components/ui/Button';
 import { Loader } from '../../../../components/ui/Loader';
@@ -65,154 +65,129 @@ export default function BillingPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-20">
+      <div className="flex h-[70vh] items-center justify-center">
         <Loader size="lg" />
       </div>
     );
   }
 
+  const cycleDays = 30;
+  const used = subscription ? Math.max(0, Math.min(cycleDays, cycleDays - daysRemaining)) : 0;
+
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Billing & Subscription</h1>
-        <p className="text-sm text-gray-500">Manage your plan and payment history</p>
-      </div>
+    <div className="pb-6">
+      <TopBar crumbs={[{ label: 'Account' }, { label: 'Billing' }]} />
 
-      {/* Current Plan Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-accent" />
-            Current Plan
-          </CardTitle>
-        </CardHeader>
+      {daysRemaining > 0 && daysRemaining <= 3 && (
+        <div role="alert" className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-warn/10 px-4 py-3 animate-rise">
+          <p className="flex items-center gap-2.5 text-sm text-warn">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            Your plan expires in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}. Renew now to avoid interruption.
+          </p>
+          <button type="button" onClick={() => setUpgradeOpen(true)} className="inline-flex h-9 items-center rounded-full bg-warn px-4 text-[13px] font-semibold text-ink">Renew</button>
+        </div>
+      )}
 
-        <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl font-bold text-white">{currentPlan}</span>
-              <Badge variant={isPaid ? 'success' : 'default'}>
-                {subscription ? 'Active' : 'Free Tier'}
-              </Badge>
-            </div>
-
-            {subscription ? (
-              <>
-                <p className="text-sm text-gray-400">
-                  Expires on <span className="text-white">{formatDate(subscription.endDate)}</span>
-                </p>
-                <div className="w-48">
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>{daysRemaining} days left</span>
-                    <span>30 days</span>
-                  </div>
-                  <div className="h-2 bg-bg-border rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${daysRemaining <= 5 ? 'bg-red-400' : 'bg-accent'}`}
-                      style={{ width: `${expiryProgress}%` }}
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-gray-500">Upgrade to unlock full monitoring features</p>
-            )}
+      <div className="mt-2 grid items-end gap-8 lg:mt-10 xl:grid-cols-[1.3fr_1fr]">
+        <div className="animate-rise">
+          <p className="font-mono text-[11px] uppercase tracking-[.08em] text-dim">Current plan</p>
+          <h1 className="mt-2 text-[80px] font-extrabold uppercase leading-[.82] sm:text-[120px] xl:text-[170px]" style={{ fontStretch: '62%' }}>{currentPlan}</h1>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Badge variant={isPaid ? 'success' : 'default'}>{subscription ? 'Active' : 'Free tier'}</Badge>
+            <span className="text-[15px] text-muted">
+              {subscription ? <>Renews / expires on <span className="text-bone">{formatDate(subscription.endDate)}</span></> : 'Upgrade to unlock full monitoring features'}
+            </span>
           </div>
+        </div>
 
-          <div className="flex gap-2">
+        <section aria-label="Billing cycle" className="rounded-xl border border-line bg-surface p-6 animate-rise [animation-delay:.1s]">
+          <div className="flex justify-between font-mono text-[11px] uppercase tracking-[.08em] text-muted">
+            <span>Cycle</span>
+            <span className={daysRemaining <= 5 && subscription ? 'text-warn' : ''}>{subscription ? `${daysRemaining} days left` : 'No active cycle'}</span>
+          </div>
+          <div className="mt-5 grid grid-cols-[repeat(30,minmax(0,1fr))] gap-[3px]" role="img" aria-label={`${used} of ${cycleDays} days used`}>
+            {Array.from({ length: cycleDays }).map((_, i) => (
+              <i
+                key={i}
+                className="block h-7 rounded-[1px] animate-[rise_.6s_cubic-bezier(.16,1,.3,1)_both]"
+                style={{ animationDelay: `${0.2 + i * 0.02}s`, background: !subscription ? 'rgba(239,235,227,.1)' : i < used ? 'rgba(239,235,227,.7)' : daysRemaining <= 5 ? '#F2B441' : '#FF5B1F' }}
+              />
+            ))}
+          </div>
+          <div className="mt-2.5 flex justify-between font-mono text-[11px] uppercase tracking-[.08em] text-dim">
+            <span>Day 1</span><span>Day {cycleDays}</span>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2.5">
+            <Button className="flex-1" onClick={() => setUpgradeOpen(true)}>{isPaid ? 'Upgrade plan' : 'Upgrade to Pro'}</Button>
             {isPaid && (
-              <Button variant="ghost" size="sm" onClick={() => setUpgradeOpen(true)}>
-                <RefreshCw className="w-4 h-4 mr-1" /> Renew
+              <Button variant="secondary" className="flex-1" onClick={() => setUpgradeOpen(true)}>
+                <RefreshCw className="h-4 w-4" /> Renew
               </Button>
             )}
-            <Button size="sm" onClick={() => setUpgradeOpen(true)}>
-              {isPaid ? 'Upgrade Plan' : 'Upgrade to Pro'}
-            </Button>
           </div>
-        </div>
+        </section>
+      </div>
 
-        {daysRemaining > 0 && daysRemaining <= 3 && (
-          <div className="mt-4 flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-            <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-red-400">
-              Your plan expires in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}. Renew now to avoid interruption.
-            </p>
-          </div>
-        )}
-      </Card>
-
-      {/* Plan Comparison */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Plan Features</CardTitle>
-        </CardHeader>
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {(['FREE', 'STARTER', 'PRO', 'ENTERPRISE'] as Plan[]).map((plan) => (
-            <div
-              key={plan}
-              className={`rounded-xl border p-4 ${
-                currentPlan === plan ? 'border-accent bg-accent/5' : 'border-bg-border'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-white">{plan}</span>
-                {currentPlan === plan && (
-                  <span className="text-xs text-accent font-medium">Current</span>
-                )}
+      <section aria-labelledby="plans-title" className="mt-14">
+        <h2 id="plans-title" className="text-2xl font-bold tracking-[-.02em]">Plans</h2>
+        <div data-stagger className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {(['FREE', 'STARTER', 'PRO', 'ENTERPRISE'] as Plan[]).map((plan) => {
+            const on = currentPlan === plan;
+            return (
+              <div key={plan} className={`relative overflow-hidden rounded-xl p-6 ${on ? 'bg-paper text-ink' : 'border border-line bg-surface'}`}>
+                {on && <span className="absolute inset-x-0 top-0 h-[3px] bg-sol" />}
+                <div className="flex justify-between font-mono text-[11px] uppercase tracking-[.08em]">
+                  <span className={on ? 'text-[#5E5A52]' : 'text-muted'}>{plan}</span>
+                  {on && <span className="text-sol-deep">Current</span>}
+                </div>
+                <ul className="mt-4 text-sm">
+                  {PLAN_FEATURES[plan].map((f) => (
+                    <li key={f} className={`flex items-start gap-2 border-t py-2.5 ${on ? 'border-ink/10' : 'border-line text-bone/80'}`}>
+                      <Check className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${on ? 'text-sol-deep' : 'text-ok'}`} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-1.5">
-                {PLAN_FEATURES[plan].map((f) => (
-                  <li key={f} className="flex items-start gap-1.5 text-xs text-gray-400">
-                    <Check className="w-3 h-3 text-green-400 mt-0.5 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+            );
+          })}
         </div>
-      </Card>
+      </section>
 
-      {/* Payment History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment History</CardTitle>
-        </CardHeader>
+      <section aria-labelledby="history-title" className="mt-14">
+        <h2 id="history-title" className="text-2xl font-bold tracking-[-.02em]">Payment history</h2>
         {history.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-4">No payments yet</p>
+          <p className="mt-4 border-t border-line py-8 text-sm text-muted">No payments yet</p>
         ) : (
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="text-xs text-gray-500 border-b border-bg-border">
-                  <th className="text-left pb-2">Date</th>
-                  <th className="text-left pb-2">Plan</th>
-                  <th className="text-left pb-2">Amount</th>
-                  <th className="text-left pb-2">Status</th>
-                  <th className="text-left pb-2">Order ID</th>
+                <tr className="font-mono text-[10px] uppercase tracking-[.08em] text-dim">
+                  <th className="pb-3 text-left font-normal">Date</th>
+                  <th className="pb-3 text-left font-normal">Plan</th>
+                  <th className="pb-3 text-left font-normal">Amount</th>
+                  <th className="pb-3 text-left font-normal">Status</th>
+                  <th className="pb-3 text-left font-normal">Order ID</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-bg-border">
+              <tbody>
                 {history.map((item) => (
-                  <tr key={item.id} className="text-gray-300">
-                    <td className="py-3">{formatDate(item.createdAt)}</td>
-                    <td className="py-3 font-medium text-white">{item.plan}</td>
-                    <td className="py-3">₹{item.amount.toLocaleString('en-IN')}</td>
-                    <td className="py-3">
-                      <Badge variant={STATUS_BADGE[item.status] ?? 'default'}>
-                        {item.status}
-                      </Badge>
+                  <tr key={item.id} className="border-t border-line">
+                    <td className="py-4">{formatDate(item.createdAt)}</td>
+                    <td className="py-4 font-medium">{item.plan}</td>
+                    <td className="py-4 font-mono">₹{item.amount.toLocaleString('en-IN')}</td>
+                    <td className="py-4">
+                      <Badge variant={STATUS_BADGE[item.status] ?? 'default'}>{item.status}</Badge>
                     </td>
-                    <td className="py-3 text-xs text-gray-500 font-mono truncate max-w-[120px]">
-                      {item.razorpayOrderId}
-                    </td>
+                    <td className="max-w-[160px] truncate py-4 font-mono text-xs text-muted">{item.razorpayOrderId}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </Card>
+        <p className="mt-4 font-mono text-[10px] uppercase tracking-[.08em] text-dim">Payments processed securely by Razorpay</p>
+      </section>
 
       <UpgradeModal
         isOpen={upgradeOpen}

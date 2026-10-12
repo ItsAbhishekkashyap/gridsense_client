@@ -137,68 +137,54 @@ export function UpgradeModal({ isOpen, onClose, currentPlan }: UpgradeModalProps
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-bg-secondary border border-bg-border rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-bg-border">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-ink/70 backdrop-blur-sm animate-fade" />
+      <div className="relative max-h-[92svh] w-full max-w-4xl overflow-y-auto rounded-t-[20px] bg-ink text-bone shadow-2xl animate-sheet sm:rounded-2xl sm:border sm:border-line">
+        <div className="flex items-start justify-between gap-4 border-b border-line p-6 md:p-8">
           <div>
-            <h2 className="text-xl font-bold text-white">Upgrade Your Plan</h2>
-            <p className="text-sm text-gray-500 mt-0.5">All plans include 30 days of access</p>
+            <p className="font-mono text-[11px] uppercase tracking-[.08em] text-sol">Upgrade</p>
+            <h2 id="upgrade-title" className="mt-2 text-[34px] font-bold leading-none tracking-[-.03em] md:text-[44px]">
+              Pick your <span className="font-serif font-normal italic text-sol">array.</span>
+            </h2>
+            <p className="mt-2 text-sm text-muted">All plans include 30 days of access.</p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-bg-card transition-colors"
-          >
-            <X className="w-5 h-5" />
+          <button onClick={onClose} aria-label="Close" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-bone/20 text-muted transition-colors hover:bg-bone hover:text-ink">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-6 grid sm:grid-cols-3 gap-4">
+        <div data-stagger className="grid gap-3 p-6 md:grid-cols-3 md:p-8">
           {PLANS.map((plan) => {
-            const Icon = plan.icon;
             const isCurrent = currentPlan === plan.name;
             const isLoading = loadingPlan === plan.name;
+            const featured = plan.name === 'PRO';
 
             return (
-              <div
-                key={plan.name}
-                className={`relative rounded-xl border p-5 flex flex-col gap-4 transition-colors ${
-                  isCurrent
-                    ? 'border-accent bg-accent/5'
-                    : 'border-bg-border bg-bg-card hover:border-gray-600'
-                }`}
-              >
-                {isCurrent && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-xs font-semibold px-3 py-0.5 rounded-full">
-                    Current Plan
-                  </span>
-                )}
-
-                <div className="flex items-center gap-2">
-                  <Icon className={`w-5 h-5 ${plan.color}`} />
-                  <span className="font-semibold text-white">{plan.label}</span>
+              <div key={plan.name} className={`relative flex flex-col gap-5 overflow-hidden rounded-xl p-6 ${featured ? 'bg-paper text-ink' : 'border border-line bg-surface'}`}>
+                {featured && <span className="absolute inset-x-0 top-0 h-[3px] bg-sol" />}
+                <div className="flex justify-between font-mono text-[11px] uppercase tracking-[.08em]">
+                  <span className={featured ? 'text-[#5E5A52]' : 'text-muted'}>{plan.label}</span>
+                  {isCurrent && <span className={featured ? 'text-sol-deep' : 'text-sol'}>Current</span>}
                 </div>
-
-                <div>
-                  <span className="text-3xl font-bold text-white">{plan.priceDisplay}</span>
-                  <span className="text-gray-500 text-sm">/month</span>
-                </div>
-
-                <ul className="space-y-2 flex-1">
+                <p>
+                  <span className="text-[64px] font-extrabold leading-[.85]" style={{ fontStretch: '62%' }}>{plan.priceDisplay}</span>
+                  <span className="font-mono text-[11px] uppercase tracking-[.08em] opacity-60"> / month</span>
+                </p>
+                <ul className="flex-1 text-sm">
                   {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-400">
-                      <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <li key={f} className={`flex items-start gap-2 border-t py-2 ${featured ? 'border-ink/10' : 'border-line text-bone/80'}`}>
+                      <Check className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${featured ? 'text-sol-deep' : 'text-ok'}`} />
                       {f}
                     </li>
                   ))}
                 </ul>
-
                 <button
                   onClick={() => handleUpgrade(plan)}
                   disabled={isCurrent || isLoading || loadingPlan !== null}
-                  className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`h-12 w-full rounded-full text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
                     isCurrent
-                      ? 'bg-accent/20 text-accent cursor-default'
-                      : 'bg-accent hover:bg-accent/90 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                      ? featured ? 'bg-ink/10 text-ink/60' : 'bg-bone/10 text-muted'
+                      : featured ? 'bg-ink text-bone hover:bg-sol hover:text-ink disabled:opacity-50' : 'bg-sol text-ink hover:bg-[#FF7438] disabled:opacity-50'
                   }`}
                 >
                   {isCurrent ? 'Active' : isLoading ? 'Processing…' : `Upgrade to ${plan.label}`}
@@ -207,6 +193,7 @@ export function UpgradeModal({ isOpen, onClose, currentPlan }: UpgradeModalProps
             );
           })}
         </div>
+        <p className="px-6 pb-6 font-mono text-[10px] uppercase tracking-[.08em] text-dim md:px-8">Payments processed securely by Razorpay</p>
       </div>
     </div>
   );

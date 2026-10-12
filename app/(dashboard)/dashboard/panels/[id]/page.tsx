@@ -14,6 +14,7 @@ import { LifespanTracker } from '../../../../../components/panels/LifespanTracke
 import { AlertHistory } from '../../../../../components/panels/AlertHistory';
 import { Button } from '../../../../../components/ui/Button';
 import { Loader } from '../../../../../components/ui/Loader';
+import { TopBar } from '../../../../../components/app/PageHeader';
 
 export default function PanelDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -42,9 +43,13 @@ export default function PanelDetailPage() {
         setPanel(p);
         setDegradation(d);
         setLifespan(l);
-        setReadings(p.readings || []);
+        // API returns newest-first; charts (and live socket appends) need oldest → newest
+        const history: PanelReading[] = [...(p.readings || [])].sort(
+          (a: PanelReading, b: PanelReading) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+        setReadings(history);
         setAlerts(p.alerts || []);
-        setCurrentReading(p.readings?.[0]);
+        setCurrentReading(history[history.length - 1]);
         setAnalysis(analysisRes.data.data.analysis);
       } catch (err) {
         console.error('Failed to load panel:', err);
@@ -91,39 +96,44 @@ export default function PanelDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
         <Loader size="lg" />
+        <p className="font-mono text-[11px] uppercase tracking-[.08em] text-muted">Reading panel…</p>
       </div>
     );
   }
 
   if (!panel) {
     return (
-      <div className="text-center py-16">
-        <p className="text-gray-400">Panel not found</p>
-        <Button variant="ghost" onClick={() => router.back()} className="mt-4">Go Back</Button>
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-4 text-center">
+        <p className="text-[56px] font-extrabold uppercase leading-none" style={{ fontStretch: '62%' }}>Panel not found</p>
+        <p className="text-muted">It may have been removed, or the link is wrong.</p>
+        <Button variant="secondary" onClick={() => router.back()} className="mt-2">Go back</Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="pb-6">
+      <TopBar
+        crumbs={[{ label: 'Overview', href: '/dashboard' }, { label: panel.location || 'Roof' }, { label: panel.name.replace(/^Panel\s+/i, '') }]}
+      />
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
+        className="mt-1 inline-flex h-11 items-center gap-2 font-mono text-[11px] uppercase tracking-[.08em] text-muted transition-colors hover:text-bone lg:mt-6"
       >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Dashboard
+        <ArrowLeft className="h-4 w-4" />
+        Roof plan
       </button>
 
       <PanelDetail panel={panel} reading={currentReading} alerts={alerts} isConnected={isConnected} />
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <ReadingsChart readings={readings} title="Efficiency History" dataKey="efficiency" color="#F97316" unit="%" />
-        <ReadingsChart readings={readings} title="Power Output" dataKey="power" color="#3B82F6" unit="W" />
+      <div className="mt-10 grid gap-4 lg:grid-cols-2">
+        <ReadingsChart readings={readings} title="Efficiency history" dataKey="efficiency" color="#FF5B1F" unit="%" />
+        <ReadingsChart readings={readings} title="Power output" dataKey="power" color="#EFEBE3" unit="W" />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <AIAnalysisCard analysis={analysis} />
         <LifespanTracker panel={panel} degradation={degradation} lifespan={lifespan} />
       </div>

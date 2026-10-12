@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Info, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 const STORAGE_KEY = 'gridsense_sim_banner_dismissed';
 
@@ -21,20 +21,14 @@ export function SimulatedBanner() {
   if (!visible) return null;
 
   return (
-    <div className="flex items-start justify-between gap-3 bg-blue-500/10 border border-blue-500/30 rounded-xl px-4 py-3">
-      <div className="flex items-start gap-2">
-        <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-        <p className="text-sm text-blue-300 leading-relaxed">
-          <span className="font-semibold">Simulated Data Mode — </span>
-          You are viewing simulated solar data for demonstration purposes. Connect real ESP32 sensors to see live readings from your actual panels.
-        </p>
-      </div>
-      <button
-        onClick={dismiss}
-        aria-label="Dismiss"
-        className="text-blue-400 hover:text-white transition-colors flex-shrink-0 mt-0.5"
-      >
-        <X className="w-4 h-4" />
+    <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-dashed border-bone/20 py-2 pl-4 pr-1 animate-rise">
+      <p className="text-[13px] leading-relaxed text-muted">
+        <span className="font-mono text-[11px] uppercase tracking-[.08em] text-bone">Simulated data</span>
+        <span className="mx-2 text-dim">·</span>
+        You’re watching demo panels. Connect ESP32 sensors to see your own roof.
+      </p>
+      <button onClick={dismiss} aria-label="Dismiss" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted hover:bg-bone/5 hover:text-bone">
+        <X className="h-4 w-4" />
       </button>
     </div>
   );

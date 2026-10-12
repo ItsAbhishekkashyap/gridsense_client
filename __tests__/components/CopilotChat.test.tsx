@@ -1,10 +1,13 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CopilotChat } from '../../components/CopilotChat';
-import axios from 'axios';
+import api from '../../lib/api';
 
-// Mock axios for API calls
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+// Mock the shared API client (axios instance) used by the copilot
+jest.mock('../../lib/api', () => ({
+  __esModule: true,
+  default: { post: jest.fn() },
+}));
+const mockedPost = api.post as jest.Mock;
 
 describe('CopilotChat Component', () => {
   beforeEach(() => {
@@ -13,63 +16,64 @@ describe('CopilotChat Component', () => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
-  it('renders the toggle button initially and opens chat on click', () => {
+  it('renders the launcher and opens the copilot on click', () => {
     render(<CopilotChat />);
-    
-    const toggleButton = screen.getByText('Ask AI Copilot');
-    expect(toggleButton).toBeInTheDocument();
 
-    // Click to open
-    fireEvent.click(toggleButton);
-    
-    // Chat window should appear with the initial greeting
-    expect(screen.getByText('SolarTech Copilot')).toBeInTheDocument();
-    expect(screen.getByText('Hello! I am your SolarTech Copilot. How can I help you monitor your grid today?')).toBeInTheDocument();
+    const launcher = screen.getByRole('button', { name: 'Ask Copilot' });
+    expect(launcher).toBeInTheDocument();
+
+    fireEvent.click(launcher);
+
+    expect(screen.getByRole('dialog', { name: 'GridSense Copilot' })).toBeInTheDocument();
+    expect(screen.getByText('GridSense Copilot')).toBeInTheDocument();
+  });
+
+  it('opens with Ctrl+K', () => {
+    render(<CopilotChat />);
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(screen.getByRole('dialog', { name: 'GridSense Copilot' })).toBeInTheDocument();
   });
 
   it('sends a message and displays the AI response', async () => {
-    // Mock the successful API response
-    mockedAxios.post.mockResolvedValueOnce({
-      data: { success: true, message: 'System is running optimally.' }
+    mockedPost.mockResolvedValueOnce({
+      data: { success: true, message: 'System is running optimally.' },
     });
 
     render(<CopilotChat />);
-    
-    // Open chat
-    fireEvent.click(screen.getByText('Ask AI Copilot'));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask Copilot' }));
 
-    // Find input and submit button
-    const input = screen.getByPlaceholderText('Ask about your solar panels...');
-    const sendButton = input.nextElementSibling as HTMLButtonElement; // The button next to input
-
-    // Type a message
+    const input = screen.getByPlaceholderText('Ask about panels, alerts, or hardware…');
     fireEvent.change(input, { target: { value: 'How is my system?' } });
     expect(input).toHaveValue('How is my system?');
 
-    // Submit
-    fireEvent.submit(sendButton.closest('form') as HTMLFormElement);
+    fireEvent.submit(input.closest('form') as HTMLFormElement);
 
-    // The user's message should appear immediately
+    // The user's message appears immediately and the input clears
     expect(screen.getByText('How is my system?')).toBeInTheDocument();
-    
-    // The input should be cleared
     expect(input).toHaveValue('');
 
-    // Wait for the AI response to appear
     await waitFor(() => {
       expect(screen.getByText('System is running optimally.')).toBeInTheDocument();
     });
 
-    // Ensure the API was called with the correct payload
-    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
-    expect(mockedAxios.post).toHaveBeenCalledWith(
-      expect.stringContaining('/api/copilot/chat'),
+    expect(mockedPost).toHaveBeenCalledTimes(1);
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/copilot/chat',
       expect.objectContaining({
         messages: expect.arrayContaining([
-          expect.objectContaining({ role: 'user', content: 'How is my system?' })
-        ])
-      }),
-      expect.any(Object)
+          expect.objectContaining({ role: 'user', content: 'How is my system?' }),
+        ]),
+      })
     );
+  });
+
+  it('shows an error message when the backend fails', async () => {
+    mockedPost.mockRejectedValueOnce(new Error('down'));
+    render(<CopilotChat />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ask Copilot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'System status' }));
+    await waitFor(() => {
+      expect(screen.getByText(/encountered an error connecting/i)).toBeInTheDocument();
+    });
   });
 });

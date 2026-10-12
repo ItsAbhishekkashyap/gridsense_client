@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, Sparkles, Activity } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useSocket } from '../../../hooks/useSocket';
 import { usePanels } from '../../../hooks/usePanels';
@@ -13,6 +13,7 @@ import { EnergyChart } from '../../../components/dashboard/EnergyChart';
 import { SimulatedBanner } from '../../../components/dashboard/SimulatedBanner';
 import { LiveIndicator } from '../../../components/ui/LiveIndicator';
 import { Loader } from '../../../components/ui/Loader';
+import { TopBar } from '../../../components/app/PageHeader';
 
 interface ExpiryNotice {
   message: string;
@@ -57,80 +58,83 @@ export default function DashboardPage() {
     });
   }, [on]);
 
+  const outputHistory = useMemo(() => {
+    const series = panels.map((p) => readingsHistory[p.id] || []);
+    const len = Math.max(0, ...series.map((h) => h.length));
+    const totals: number[] = [];
+    for (let i = 0; i < len; i++) {
+      totals.push(series.reduce((sum, h) => sum + (h[h.length - len + i]?.power ?? 0), 0));
+    }
+    return totals;
+  }, [panels, readingsHistory]);
+
+  const firstName = user?.name?.split(/\s+/)[0] || 'there';
+  const hour = new Date().getHours();
+  const greeting = hour < 5 ? 'Still up' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const attention = alerts.length;
+
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-80 gap-3">
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
         <Loader size="lg" />
-        <p className="text-sm font-semibold text-slate-400 animate-pulse">Initializing GridSense Telemetry...</p>
+        <p className="font-mono text-[11px] uppercase tracking-[.08em] text-muted">Initialising telemetry…</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-7 pb-10">
+    <div className="pb-6">
+      <TopBar crumbs={[{ label: 'Grid section A' }, { label: 'Overview' }]} right={<LiveIndicator isConnected={isConnected} />} />
       <SimulatedBanner />
 
       {/* Subscription expiry banners */}
       {planExpired && (
-        <div className="flex items-center justify-between gap-4 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl backdrop-blur-md shadow-lg shadow-rose-950/20">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
-            <p className="text-sm font-semibold text-rose-200">
-              Your plan has expired. You are currently on the Free plan tier.
-            </p>
-          </div>
-          <Link
-            href="/dashboard/billing"
-            className="shrink-0 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 px-4 py-2 rounded-xl transition-all shadow-md shadow-rose-950/40"
-          >
-            Upgrade Plan
+        <div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-crit/10 px-4 py-3 animate-rise">
+          <p className="flex items-center gap-2.5 text-sm text-crit">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            Your plan has expired. You are currently on the Free plan tier.
+          </p>
+          <Link href="/dashboard/billing" className="inline-flex h-9 items-center rounded-full bg-crit px-4 text-[13px] font-semibold text-ink">
+            Upgrade plan
           </Link>
         </div>
       )}
 
       {!planExpired && expiryNotice && (
-        <div className="flex items-center justify-between gap-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-md">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
-            <p className="text-sm font-semibold text-amber-200">{expiryNotice.message}</p>
-          </div>
-          <Link
-            href="/dashboard/billing"
-            className="shrink-0 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-xl transition-all shadow-md"
-          >
-            Renew Subscription
+        <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-warn/10 px-4 py-3 animate-rise">
+          <p className="flex items-center gap-2.5 text-sm text-warn">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {expiryNotice.message}
+          </p>
+          <Link href="/dashboard/billing" className="inline-flex h-9 items-center rounded-full bg-warn px-4 text-[13px] font-semibold text-ink">
+            Renew subscription
           </Link>
         </div>
       )}
 
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel rounded-2xl p-6 border border-slate-800/80">
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-4 lg:mt-11 animate-rise">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-slate-100 tracking-tight">Solar Telemetry Dashboard</h1>
-            <span className="text-xs font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              REAL-TIME
-            </span>
-          </div>
-          <p className="text-sm font-medium text-slate-400 mt-1">
-            Monitoring <span className="text-slate-200 font-bold">{panels.length} active solar arrays</span> across grid section A.
+          <p className="font-mono text-[11px] uppercase tracking-[.08em] text-dim" suppressHydrationWarning>
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
+          </p>
+          <h1 className="mt-2 text-[40px] font-bold leading-none tracking-[-.03em] sm:text-[52px] xl:text-[64px]" style={{ fontStretch: '95%' }}>
+            {greeting}, <span className="font-serif font-normal italic text-sol">{firstName}.</span>
+          </h1>
+          <p className="mt-3 text-[15px] text-muted md:text-base">
+            {panels.length} arrays reporting{attention > 0 ? ` · ${attention} need${attention === 1 ? 's' : ''} you` : ' · all calm'}.
           </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <LiveIndicator isConnected={isConnected} />
-        </div>
+        <div className="lg:hidden"><LiveIndicator isConnected={isConnected} /></div>
       </div>
 
-      {/* Metrics Row */}
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} history={outputHistory} />
 
-      {/* Main Grid Section */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="mt-10 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+        <div className="flex min-w-0 flex-col gap-6">
           <PanelGrid panels={panels} readings={readings} alerts={alerts} />
           <EnergyChart panels={panels} readingsHistory={readingsHistory} />
         </div>
-        <div className="lg:col-span-1">
+        <div className="xl:pt-[52px]">
           <AlertPanel alerts={alerts} />
         </div>
       </div>

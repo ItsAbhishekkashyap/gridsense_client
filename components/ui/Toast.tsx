@@ -9,18 +9,17 @@ export function ToastProvider() {
       toastOptions={{
         duration: 4000,
         style: {
-          background: '#112240',
-          color: '#ffffff',
-          border: '1px solid #1E3A5F',
-          borderRadius: '8px',
+          background: '#EFEBE3',
+          color: '#141412',
+          border: '0',
+          borderRadius: '10px',
           fontSize: '14px',
+          fontWeight: 500,
+          padding: '12px 16px',
+          boxShadow: '0 24px 48px -20px rgba(0,0,0,.6)',
         },
-        success: {
-          iconTheme: { primary: '#22C55E', secondary: '#112240' },
-        },
-        error: {
-          iconTheme: { primary: '#EF4444', secondary: '#112240' },
-        },
+        success: { iconTheme: { primary: '#2F7D55', secondary: '#EFEBE3' } },
+        error: { iconTheme: { primary: '#C2410C', secondary: '#EFEBE3' } },
       }}
     />
   );

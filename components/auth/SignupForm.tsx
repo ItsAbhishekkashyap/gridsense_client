@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, Check, X } from 'lucide-react';
+import { Eye, EyeOff, Check, Circle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -11,10 +11,10 @@ import { toast } from '../ui/Toast';
 
 function PasswordRule({ met, label }: { met: boolean; label: string }) {
   return (
-    <div className={`flex items-center gap-1.5 text-xs ${met ? 'text-green-400' : 'text-gray-500'}`}>
-      {met ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+    <span className={`flex items-center gap-1.5 font-mono text-[11px] transition-colors ${met ? 'text-[#2F7D55]' : 'text-[#5E5A52]'}`}>
+      {met ? <Check className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
       {label}
-    </div>
+    </span>
   );
 }
 
@@ -31,6 +31,7 @@ export function SignupForm() {
     uppercase: /[A-Z]/.test(form.password),
     number: /[0-9]/.test(form.password),
   };
+  const strength = [rules.length, rules.uppercase, rules.number].filter(Boolean).length;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,70 +63,46 @@ export function SignupForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Input
-        label="Full Name"
-        type="text"
-        placeholder="John Doe"
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-        error={errors.name}
-        autoComplete="name"
-      />
-      <Input
-        label="Email"
-        type="email"
-        placeholder="you@example.com"
-        value={form.email}
-        onChange={(e) => setForm({ ...form, email: e.target.value })}
-        error={errors.email}
-        autoComplete="email"
-      />
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+      <Input tone="light" label="Full name" type="text" placeholder="John Doe" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} error={errors.name} autoComplete="name" />
+      <Input tone="light" label="Email" type="email" placeholder="you@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} error={errors.email} autoComplete="email" />
       <div>
-        <div className="relative">
-          <Input
-            label="Password"
-            type={showPassword ? 'text' : 'password'}
-            placeholder="••••••••"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            error={errors.password}
-            autoComplete="new-password"
-            className="pr-10"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-[34px] text-gray-500 hover:text-gray-300"
-          >
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
+        <Input
+          tone="light"
+          label="Password"
+          type={showPassword ? 'text' : 'password'}
+          placeholder="••••••••"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+          error={errors.password}
+          autoComplete="new-password"
+          trailing={
+            <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="flex h-11 w-11 items-center justify-center text-[#5E5A52] hover:text-ink">
+              {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+            </button>
+          }
+        />
+        <div className="mt-3 grid grid-cols-3 gap-1.5" aria-hidden>
+          {[0, 1, 2].map((i) => (
+            <span key={i} className={`h-[3px] rounded-full transition-colors duration-500 ${i < strength ? (strength === 3 ? 'bg-[#2F7D55]' : 'bg-sol') : 'bg-ink/10'}`} />
+          ))}
         </div>
-        {form.password && (
-          <div className="mt-2 grid grid-cols-3 gap-1">
-            <PasswordRule met={rules.length} label="8+ chars" />
-            <PasswordRule met={rules.uppercase} label="Uppercase" />
-            <PasswordRule met={rules.number} label="Number" />
-          </div>
-        )}
+        <div className="mt-2 flex flex-wrap gap-4">
+          <PasswordRule met={rules.length} label="8+ chars" />
+          <PasswordRule met={rules.uppercase} label="Uppercase" />
+          <PasswordRule met={rules.number} label="Number" />
+        </div>
       </div>
-      <Input
-        label="Confirm Password"
-        type="password"
-        placeholder="••••••••"
-        value={form.confirmPassword}
-        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-        error={errors.confirmPassword}
-        autoComplete="new-password"
-      />
-      <Button type="submit" isLoading={isLoading} className="w-full" size="lg">
-        Create Account
+      <Input tone="light" label="Confirm password" type="password" placeholder="••••••••" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} error={errors.confirmPassword} autoComplete="new-password" />
+      <Button type="submit" variant="ink" isLoading={isLoading} size="lg" className="w-full justify-between pl-7 pr-2">
+        Create account
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sol text-ink transition-transform duration-500 ease-expo group-hover:translate-x-1">
+          <ArrowRight className="h-4 w-4" />
+        </span>
       </Button>
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-[15px] text-[#5E5A52]">
         Already have an account?{' '}
-        <Link href="/login" className="text-accent hover:underline">
-          Sign in
-        </Link>
+        <Link href="/login" className="font-medium text-sol-deep underline-offset-4 hover:underline">Sign in</Link>
       </p>
     </form>
   );

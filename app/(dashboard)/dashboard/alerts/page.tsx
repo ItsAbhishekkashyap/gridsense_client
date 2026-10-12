@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertTriangle, Info, CheckCircle, Filter } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { Alert } from '../../../../types';
 import { alertApi } from '../../../../lib/api';
 import { Badge } from '../../../../components/ui/Badge';
 import { Button } from '../../../../components/ui/Button';
-import { Card } from '../../../../components/ui/Card';
+import { TopBar, PageTitle } from '../../../../components/app/PageHeader';
 import { Loader } from '../../../../components/ui/Loader';
 import { toast } from '../../../../components/ui/Toast';
 import { timeAgo } from '../../../../lib/utils';
@@ -78,122 +78,106 @@ export default function AlertsPage() {
     return 'info';
   };
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Alerts</h1>
-        <p className="text-sm text-gray-500">{total} total alerts</p>
-      </div>
+  const COLOR: Record<string, string> = { CRITICAL: '#FF7A6E', WARNING: '#F2B441', INFO: '#8FB8FF' };
+  const counts = (['CRITICAL', 'WARNING', 'INFO'] as const).map((k) => ({ k, n: alerts.filter((a) => a.severity === k && !a.resolved).length }));
+  const chip = (on: boolean) =>
+    `h-10 shrink-0 rounded-full px-4 text-[13px] font-medium transition-colors ${on ? 'bg-bone text-ink' : 'border border-bone/20 text-muted hover:border-bone/50 hover:text-bone'}`;
+  const label = (v: string) => (v === 'ALL' ? 'All' : v.charAt(0) + v.slice(1).toLowerCase());
 
-      <Card>
-        <div className="flex flex-wrap items-center gap-3">
-          <Filter className="w-4 h-4 text-gray-400" />
-          <div className="flex flex-wrap gap-2">
-            {SEVERITY_OPTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => setSeverity(s)}
-                className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                  severity === s ? 'bg-accent/10 border-accent text-accent' : 'border-bg-border text-gray-400 hover:border-gray-500'
-                }`}
-              >
-                {s}
-              </button>
+  return (
+    <div className="pb-6">
+      <TopBar crumbs={[{ label: 'Grid section A' }, { label: 'Alerts' }]} />
+      <PageTitle
+        title="Alerts"
+        sub={`${total} total · every fault the copilot has raised, newest first.`}
+        aside={
+          <dl className="flex rounded-xl border border-line">
+            {counts.map((c, i) => (
+              <div key={c.k} className={`px-4 py-3 sm:px-5 sm:py-4 ${i > 0 ? 'border-l border-line' : ''}`}>
+                <dd className="font-mono text-[26px] sm:text-[32px]" style={{ color: COLOR[c.k] }}>{c.n}</dd>
+                <dt className="font-mono text-[10px] uppercase tracking-[.08em] text-muted">{label(c.k)}</dt>
+              </div>
             ))}
-          </div>
-          <div className="flex flex-wrap gap-2">
+          </dl>
+        }
+      />
+
+      <div className="mt-8 flex flex-col gap-3 border-t border-bone/15 pt-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="group" aria-label="Severity">
+          {SEVERITY_OPTIONS.map((s) => (
+            <button key={s} type="button" aria-pressed={severity === s} onClick={() => setSeverity(s)} className={chip(severity === s)}>{label(s)}</button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="group" aria-label="Category">
             {CATEGORY_OPTIONS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                  category === c ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'border-bg-border text-gray-400 hover:border-gray-500'
-                }`}
-              >
+              <button key={c} type="button" aria-pressed={category === c} onClick={() => setCategory(c)} className={`h-9 shrink-0 rounded-full px-3 font-mono text-[10px] uppercase tracking-[.08em] transition-colors ${category === c ? 'bg-sol text-ink' : 'text-muted hover:text-bone'}`}>
                 {c}
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer ml-auto">
-            <input
-              type="checkbox"
-              checked={showResolved}
-              onChange={(e) => setShowResolved(e.target.checked)}
-              className="w-3 h-3"
-            />
-            Show Resolved
+          <label className="flex h-10 cursor-pointer items-center gap-2.5 text-[13px] text-muted">
+            <input type="checkbox" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} className="h-4 w-4 accent-[#FF5B1F]" />
+            Show resolved
           </label>
         </div>
-      </Card>
+      </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader size="lg" />
-        </div>
+        <div className="flex justify-center py-20"><Loader size="lg" /></div>
       ) : alerts.length === 0 ? (
-        <div className="text-center py-16">
-          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-          <p className="text-white font-medium">No alerts found</p>
-          <p className="text-sm text-gray-500 mt-1">All panels are operating normally</p>
+        <div className="flex flex-col items-center py-20 text-center animate-rise">
+          <CheckCircle className="mb-4 h-12 w-12 text-ok" strokeWidth={1.4} />
+          <p className="text-lg font-semibold">No alerts found</p>
+          <p className="mt-1 text-sm text-muted">All panels are operating normally.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {alerts.map((alert) => (
-            <Card key={alert.id} className={`${alert.resolved ? 'opacity-60' : ''}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  {alert.severity === 'CRITICAL' || alert.severity === 'WARNING' ? (
-                    <AlertTriangle className={`w-5 h-5 mt-0.5 flex-shrink-0 ${alert.severity === 'CRITICAL' ? 'text-red-400' : 'text-yellow-400'}`} />
-                  ) : (
-                    <Info className="w-5 h-5 mt-0.5 text-blue-400 flex-shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-white">{alert.title}</span>
-                      <Badge variant={severityBadge(alert.severity) as 'critical' | 'warning' | 'info'}>{alert.severity}</Badge>
-                      <Badge variant="default">{alert.category}</Badge>
-                      {alert.resolved && <Badge variant="success">Resolved</Badge>}
-                    </div>
-                    <p className="text-xs text-gray-500 mb-1">
-                      {alert.panel?.name} · {timeAgo(alert.createdAt)}
-                      {alert.resolved && alert.resolvedAt && ` · Resolved ${timeAgo(alert.resolvedAt)}`}
-                    </p>
-                    <p className="text-sm text-gray-400">{alert.message}</p>
-                    {!alert.resolved && (
-                      <p className="text-xs text-accent mt-1">{alert.actionRequired}</p>
-                    )}
-                    {alert.estimatedLoss && alert.estimatedLoss > 0 && (
-                      <p className="text-xs text-red-400 mt-1">Est. loss: ₹{alert.estimatedLoss}/day</p>
-                    )}
+        <>
+          <div className="mt-6 hidden grid-cols-[6px_1.4fr_1fr_120px_110px_140px] gap-6 pb-2 font-mono text-[10px] uppercase tracking-[.08em] text-dim xl:grid">
+            <span /><span>Alert</span><span>Action required</span><span>Est. loss</span><span>Raised</span><span />
+          </div>
+          <ul data-stagger className="border-b border-line">
+            {alerts.map((alert) => (
+              <li key={alert.id} className={`grid grid-cols-[4px_1fr] gap-x-4 gap-y-3 border-t border-line py-5 xl:grid-cols-[6px_1.4fr_1fr_120px_110px_140px] xl:items-center xl:gap-6 ${alert.resolved ? 'opacity-55' : ''}`}>
+                <span className="row-span-3 h-full min-h-[44px] rounded-sm xl:row-span-1" style={{ background: alert.resolved ? '#6F6B63' : COLOR[alert.severity] ?? COLOR.INFO }} />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={severityBadge(alert.severity) as 'critical' | 'warning' | 'info'}>{alert.severity}</Badge>
+                    <Badge variant="default">{alert.category}</Badge>
+                    {alert.resolved && <Badge variant="success">Resolved</Badge>}
                   </div>
+                  <p className="mt-2 text-[17px] font-semibold leading-snug">{alert.title}</p>
+                  <p className="mt-1 text-sm text-muted">{alert.panel?.name}{alert.message ? ` · ${alert.message}` : ''}</p>
                 </div>
-                <div className="flex-shrink-0">
-                  {!alert.resolved ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleResolve(alert.id)}
-                      disabled={loadingId === alert.id}
-                      className="text-orange-400 border border-orange-400/40 hover:bg-orange-400/10"
-                    >
-                      {loadingId === alert.id ? 'Saving…' : 'Resolve'}
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleUnresolve(alert.id)}
-                      disabled={loadingId === alert.id}
-                      className="text-gray-400 border border-gray-600 hover:bg-gray-700/30"
-                    >
-                      {loadingId === alert.id ? 'Saving…' : 'Mark Unresolved'}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+                <p className="col-start-2 text-sm leading-relaxed text-bone/80 xl:col-start-auto">
+                  {!alert.resolved && alert.actionRequired ? <><span className="mr-1.5 font-mono text-[10px] uppercase tracking-[.08em] text-sol xl:hidden">Action</span>{alert.actionRequired}</> : <span className="text-dim">—</span>}
+                </p>
+                <p className="col-start-2 flex flex-wrap items-center justify-between gap-3 xl:contents">
+                  <span className="font-mono text-lg xl:text-xl">{alert.estimatedLoss && alert.estimatedLoss > 0 ? `₹${alert.estimatedLoss}/day` : '—'}</span>
+                  <span className="font-mono text-[11px] uppercase tracking-[.08em] text-muted">
+                    {timeAgo(alert.createdAt)}
+                    {alert.resolved && alert.resolvedAt && <span className="block normal-case text-dim">fixed {timeAgo(alert.resolvedAt)}</span>}
+                  </span>
+                  <span className="xl:text-right">
+                    {!alert.resolved ? (
+                      <Button variant="secondary" size="sm" onClick={() => handleResolve(alert.id)} disabled={loadingId === alert.id}>
+                        {loadingId === alert.id ? 'Saving…' : 'Resolve'}
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" onClick={() => handleUnresolve(alert.id)} disabled={loadingId === alert.id}>
+                        {loadingId === alert.id ? 'Saving…' : 'Mark unresolved'}
+                      </Button>
+                    )}
+                  </span>
+                </p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 flex justify-between font-mono text-[10px] uppercase tracking-[.08em] text-dim">
+            <span>Showing {alerts.length} of {total}</span>
+            <span>Auto-resolves when readings normalise</span>
+          </p>
+        </>
       )}
     </div>
   );

@@ -9,11 +9,15 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Legend,
+  Cell,
+  AreaChart,
+  Area,
 } from 'recharts';
-import { Download, TrendingUp, Leaf } from 'lucide-react';
-import { dashboardApi, panelApi } from '../../../../lib/api';
-import { Card, CardHeader, CardTitle } from '../../../../components/ui/Card';
+import { Download } from 'lucide-react';
+import { dashboardApi } from '../../../../lib/api';
+import { TopBar, PageTitle } from '../../../../components/app/PageHeader';
+import { AnimatedNumber } from '../../../../components/app/AnimatedNumber';
+import { ChartTooltip } from '../../../../components/dashboard/EnergyChart';
 import { Button } from '../../../../components/ui/Button';
 import { Loader } from '../../../../components/ui/Loader';
 import { toast } from '../../../../components/ui/Toast';
@@ -91,95 +95,114 @@ export default function ReportsPage() {
     toast.success('Report exported');
   };
 
-  const tooltipStyle = {
-    contentStyle: { background: '#112240', border: '1px solid #1E3A5F', borderRadius: '8px', fontSize: '12px', color: '#fff' },
-  };
-
   if (isLoading) {
-    return <div className="flex justify-center py-16"><Loader size="lg" /></div>;
+    return <div className="flex h-[70vh] items-center justify-center"><Loader size="lg" /></div>;
   }
 
+  const best = energyData.reduce<ChartDataPoint | null>((b, d) => (!b || d.energy > b.energy ? d : b), null);
+  const axis = { fill: '#6F6B63', fontSize: 10, fontFamily: 'var(--font-mono)' };
+  const stats = [
+    { label: 'Total energy', value: totalEnergy, decimals: 1, unit: 'kWh', prefix: '', hot: false },
+    { label: 'Money saved', value: totalMoney, decimals: 0, unit: '', prefix: '₹', hot: true },
+    { label: 'CO₂ offset', value: totalCO2, decimals: 1, unit: 'kg', prefix: '', hot: false },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Reports</h1>
-          <p className="text-sm text-gray-500">Last 30 days performance</p>
-        </div>
-        <Button variant="secondary" size="sm" onClick={exportCSV}>
-          <Download className="w-4 h-4" />
-          Export CSV
-        </Button>
-      </div>
+    <div className="pb-6">
+      <TopBar crumbs={[{ label: 'Grid section A' }, { label: 'Reports' }]} />
+      <PageTitle
+        eyebrow="Last 30 days"
+        title="Thirty days"
+        sub="What your roof made, saved and spared."
+        aside={
+          <Button variant="secondary" onClick={exportCSV} disabled={energyData.length === 0}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        }
+      />
 
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Total Energy', value: `${totalEnergy.toFixed(1)} kWh`, icon: TrendingUp, color: 'text-accent' },
-          { label: 'Money Saved', value: `₹${totalMoney.toFixed(0)}`, icon: TrendingUp, color: 'text-green-400' },
-          { label: 'CO2 Offset', value: `${totalCO2.toFixed(1)} kg`, icon: Leaf, color: 'text-emerald-400' },
-        ].map((stat) => (
-          <Card key={stat.label} className="text-center">
-            <p className="text-xs text-gray-500 mb-1">{stat.label}</p>
-            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-          </Card>
+      <dl data-stagger className="mt-10 grid border-y border-bone/15 sm:grid-cols-3">
+        {stats.map((st, i) => (
+          <div key={st.label} className={`py-6 sm:py-7 ${i > 0 ? 'border-t border-line sm:border-l sm:border-t-0 sm:pl-7' : ''}`}>
+            <dt className="font-mono text-[11px] uppercase tracking-[.08em] text-muted">{st.label}</dt>
+            <dd className={`mt-3 font-mono text-[44px] leading-none tracking-[-.04em] md:text-[60px] ${st.hot ? 'text-sol' : ''}`}>
+              <AnimatedNumber value={st.value} decimals={st.decimals} prefix={st.prefix} duration={1.6} />
+              {st.unit && <span className="text-lg text-muted"> {st.unit}</span>}
+            </dd>
+          </div>
         ))}
-      </div>
+      </dl>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Daily Energy Generation (kWh)</CardTitle>
-        </CardHeader>
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={energyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1E3A5F" />
-              <XAxis dataKey="date" tick={{ fill: '#6B7280', fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}`} width={40} />
-              <Tooltip {...tooltipStyle} formatter={(v) => [`${v} kWh`, 'Energy']} />
-              <Bar dataKey="energy" fill="#F97316" radius={[4, 4, 0, 0]} maxBarSize={30} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Daily Money Saved (₹)</CardTitle>
-        </CardHeader>
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={energyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1E3A5F" />
-              <XAxis dataKey="date" tick={{ fill: '#6B7280', fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} width={50} />
-              <Tooltip {...tooltipStyle} formatter={(v) => [`₹${v}`, 'Money Saved']} />
-              <Bar dataKey="moneySaved" fill="#22C55E" radius={[4, 4, 0, 0]} maxBarSize={30} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <div className="flex items-center gap-2">
-              <Leaf className="w-4 h-4 text-emerald-400" />
-              CO2 Offset (kg)
+      {energyData.length === 0 ? (
+        <p className="mt-10 rounded-xl border border-dashed border-bone/20 py-16 text-center text-muted">No readings yet for this period — reports fill in as your panels report.</p>
+      ) : (
+        <>
+          <section aria-label="Daily energy generation" className="mt-8 rounded-xl border border-line bg-surface p-5 md:p-7 animate-rise">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-bold">Daily energy generation</h2>
+              <span className="font-mono text-[11px] uppercase tracking-[.08em] text-muted">kWh {best && <>· <span className="text-sol">■</span> best day {best.date}</>}</span>
             </div>
-          </CardTitle>
-        </CardHeader>
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={energyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1E3A5F" />
-              <XAxis dataKey="date" tick={{ fill: '#6B7280', fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} tickLine={false} axisLine={false} width={40} />
-              <Tooltip {...tooltipStyle} formatter={(v) => [`${v} kg`, 'CO2 Offset']} />
-              <Bar dataKey="co2" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={30} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
+            <div className="mt-6 h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={energyData} margin={{ top: 5, right: 6, left: -12, bottom: 0 }}>
+                  <CartesianGrid stroke="rgba(239,235,227,.07)" vertical={false} />
+                  <XAxis dataKey="date" tick={axis} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={30} />
+                  <YAxis tick={axis} tickLine={false} axisLine={false} width={44} />
+                  <Tooltip content={<ChartTooltip unit=" kWh" />} cursor={{ fill: 'rgba(239,235,227,.05)' }} />
+                  <Bar dataKey="energy" name="Energy" radius={[3, 3, 0, 0]} maxBarSize={28} animationDuration={1200} animationEasing="ease-out">
+                    {energyData.map((d) => <Cell key={d.date} fill={best && d.date === best.date ? '#FF5B1F' : 'rgba(239,235,227,.85)'} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <section aria-label="Daily money saved" className="rounded-xl border border-line bg-surface p-5 md:p-7 animate-rise [animation-delay:.1s]">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Money saved</h2>
+                <span className="font-mono text-[11px] uppercase tracking-[.08em] text-muted">₹ / day</span>
+              </div>
+              <div className="mt-6 h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={energyData} margin={{ top: 5, right: 6, left: -12, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="money" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0" stopColor="#FF5B1F" stopOpacity={0.35} />
+                        <stop offset="1" stopColor="#FF5B1F" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="rgba(239,235,227,.07)" vertical={false} />
+                    <XAxis dataKey="date" tick={axis} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={30} />
+                    <YAxis tick={axis} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} width={50} />
+                    <Tooltip content={<ChartTooltip unit="" />} cursor={{ stroke: 'rgba(239,235,227,.2)' }} />
+                    <Area type="monotone" dataKey="moneySaved" name="Saved ₹" stroke="#FF5B1F" strokeWidth={2} fill="url(#money)" animationDuration={1400} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            <section aria-label="CO2 offset" className="rounded-xl border border-line bg-surface p-5 md:p-7 animate-rise [animation-delay:.18s]">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">CO₂ offset</h2>
+                <span className="font-mono text-[11px] uppercase tracking-[.08em] text-muted">kg / day</span>
+              </div>
+              <div className="mt-6 h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={energyData} margin={{ top: 5, right: 6, left: -12, bottom: 0 }}>
+                    <CartesianGrid stroke="rgba(239,235,227,.07)" vertical={false} />
+                    <XAxis dataKey="date" tick={axis} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={30} />
+                    <YAxis tick={axis} tickLine={false} axisLine={false} width={40} />
+                    <Tooltip content={<ChartTooltip unit=" kg" />} cursor={{ fill: 'rgba(239,235,227,.05)' }} />
+                    <Bar dataKey="co2" name="CO₂" fill="#9BE3BF" radius={[3, 3, 0, 0]} maxBarSize={28} animationDuration={1200} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          </div>
+        </>
+      )}
     </div>
   );
 }

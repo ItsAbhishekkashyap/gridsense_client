@@ -1,24 +1,30 @@
 'use client';
 
 import { useMemo } from 'react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
-import { Activity, Sparkles } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Panel, PanelReading } from '../../types';
 import { Loader } from '../ui/Loader';
 
-const PANEL_COLORS = ['#F97316', '#3B82F6', '#10B981', '#A855F7', '#F59E0B', '#EC4899'];
+export const PANEL_COLORS = ['#EFEBE3', '#FF7A6E', '#F2B441', '#9BE3BF', '#8FB8FF', '#FF5B1F'];
 
 interface EnergyChartProps {
   panels: Panel[];
   readingsHistory: Record<string, PanelReading[]>;
+}
+
+export function ChartTooltip({ active, payload, label, unit = 'W' }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string; unit?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="min-w-[150px] rounded-lg bg-paper px-3 py-2.5 text-ink shadow-2xl">
+      <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[.08em] text-[#5E5A52]">{label}</p>
+      {payload.map((e) => (
+        <div key={e.name} className="flex items-center justify-between gap-4 text-[13px]">
+          <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full" style={{ background: e.color === '#EFEBE3' ? '#141412' : e.color }} />{e.name}</span>
+          <span className="font-mono font-medium">{e.value}{unit}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function EnergyChart({ panels, readingsHistory }: EnergyChartProps) {
@@ -35,112 +41,52 @@ export function EnergyChart({ panels, readingsHistory }: EnergyChartProps) {
 
     return firstPanelHistory.slice(-20).map((r, i) => {
       const point: Record<string, unknown> = {
-        time: new Date(r.timestamp).toLocaleTimeString('en-IN', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        }),
+        time: new Date(r.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       };
       for (const panel of panels) {
         const hist = readingsHistory[panel.id] || [];
         const reading = hist[offset + i];
-        if (reading) {
-          point[panel.name] = Math.round(reading.power * 10) / 10;
-        }
+        if (reading) point[panel.name] = Math.round(reading.power * 10) / 10;
       }
       return point;
     });
   }, [panels, readingsHistory, hasData]);
 
-  const CustomTooltip = ({
-    active,
-    payload,
-    label,
-  }: {
-    active?: boolean;
-    payload?: Array<{ name: string; value: number; color: string }>;
-    label?: string;
-  }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="glass-panel border border-slate-700/80 rounded-xl p-3 shadow-2xl backdrop-blur-xl text-xs space-y-1.5 min-w-[140px]">
-        <p className="text-[11px] font-bold text-slate-400 border-b border-slate-800 pb-1 uppercase tracking-wider">{label}</p>
-        {payload.map((entry) => (
-          <div key={entry.name} className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ background: entry.color }} />
-              <span className="font-semibold text-slate-300">{entry.name}</span>
-            </div>
-            <span className="font-extrabold text-white">{entry.value}W</span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   return (
-    <div className="glass-panel rounded-2xl p-5 border border-slate-800">
-      <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800/80">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-            <Activity className="w-4 h-4 text-blue-400" />
-          </div>
-          <div>
-            <h3 className="font-bold text-base text-slate-100 tracking-tight">Live Array Power Telemetry</h3>
-            <p className="text-xs text-slate-400">Real-time wattage outputs across active solar panels</p>
-          </div>
+    <section aria-labelledby="power-chart" className="rounded-xl border border-line bg-surface p-5 md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="power-chart" className="text-xl font-bold tracking-[-.01em]">Power, per panel</h2>
+          <p className="mt-1 font-mono text-[11px] uppercase tracking-[.08em] text-dim">Last 20 readings · 2 s</p>
         </div>
-        <span className="text-[11px] font-semibold text-slate-400 bg-slate-900 border border-slate-800 rounded-full px-3 py-1">
-          2s Frequency
-        </span>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[.08em] text-muted">
+          {panels.map((p, i) => (
+            <span key={p.id} className="flex items-center gap-1.5"><i className="h-0.5 w-3.5" style={{ background: PANEL_COLORS[i % PANEL_COLORS.length] }} />{p.name.replace(/^Panel\s+/i, '')}</span>
+          ))}
+        </div>
       </div>
 
       {!hasData ? (
-        <div className="h-64 flex flex-col items-center justify-center gap-3">
+        <div className="flex h-64 flex-col items-center justify-center gap-3">
           <Loader size="md" />
-          <p className="text-sm font-semibold text-slate-400">Synchronizing Power Curves...</p>
-          <p className="text-xs text-slate-500">Live readings update every 2 seconds</p>
+          <p className="text-sm font-semibold text-muted">Synchronising power curves…</p>
+          <p className="font-mono text-[11px] uppercase tracking-[.08em] text-dim">Live readings arrive every 2 seconds</p>
         </div>
       ) : (
-        <div className="h-64 pt-2">
+        <div className="mt-4 h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-              <XAxis
-                dataKey="time"
-                tick={{ fill: '#64748B', fontSize: 11, fontWeight: 500 }}
-                tickLine={false}
-                axisLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fill: '#64748B', fontSize: 11, fontWeight: 500 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) => `${v}W`}
-                width={50}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{ fontSize: '11px', fontWeight: 600, paddingTop: '10px' }}
-                iconType="circle"
-                iconSize={8}
-              />
+            <LineChart data={chartData} margin={{ top: 10, right: 6, left: -8, bottom: 0 }}>
+              <CartesianGrid stroke="rgba(239,235,227,.07)" vertical={false} />
+              <XAxis dataKey="time" tick={{ fill: '#6F6B63', fontSize: 10, fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={40} />
+              <YAxis tick={{ fill: '#6F6B63', fontSize: 10, fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}W`} width={48} />
+              <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'rgba(239,235,227,.2)' }} />
               {panels.map((panel, i) => (
-                <Line
-                  key={panel.id}
-                  type="monotone"
-                  dataKey={panel.name}
-                  stroke={PANEL_COLORS[i % PANEL_COLORS.length]}
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 4, strokeWidth: 0 }}
-                  isAnimationActive={false}
-                />
+                <Line key={panel.id} type="monotone" dataKey={panel.name} stroke={PANEL_COLORS[i % PANEL_COLORS.length]} strokeWidth={1.8} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} isAnimationActive={false} />
               ))}
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
-    </div>
+    </section>
   );
 }

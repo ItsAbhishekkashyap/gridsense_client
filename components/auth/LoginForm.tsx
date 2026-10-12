@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -38,8 +38,9 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
       <Input
+        tone="light"
         label="Email"
         type="email"
         placeholder="you@example.com"
@@ -48,32 +49,36 @@ export function LoginForm() {
         error={errors.email}
         autoComplete="email"
       />
-      <div className="relative">
-        <Input
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          placeholder="••••••••"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          error={errors.password}
-          autoComplete="current-password"
-          className="pr-10"
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-[34px] text-gray-500 hover:text-gray-300"
-        >
-          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
-      </div>
-      <Button type="submit" isLoading={isLoading} className="w-full" size="lg">
-        Sign In
+      <Input
+        tone="light"
+        label="Password"
+        type={showPassword ? 'text' : 'password'}
+        placeholder="••••••••"
+        value={form.password}
+        onChange={(e) => setForm({ ...form, password: e.target.value })}
+        error={errors.password}
+        autoComplete="current-password"
+        trailing={
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            className="flex h-11 w-11 items-center justify-center text-[#5E5A52] hover:text-ink"
+          >
+            {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+          </button>
+        }
+      />
+      <Button type="submit" variant="ink" isLoading={isLoading} size="lg" className="w-full justify-between pl-7 pr-2">
+        Sign in
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sol text-ink transition-transform duration-500 ease-expo group-hover:translate-x-1">
+          <ArrowRight className="h-4 w-4" />
+        </span>
       </Button>
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-[15px] text-[#5E5A52]">
         New to GridSense?{' '}
-        <Link href="/signup" className="text-accent hover:underline">
-          Create account
+        <Link href="/signup" className="font-medium text-sol-deep underline-offset-4 hover:underline">
+          Create an account
         </Link>
       </p>
     </form>

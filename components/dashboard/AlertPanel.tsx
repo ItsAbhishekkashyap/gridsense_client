@@ -1,71 +1,50 @@
 'use client';
 
-import { AlertTriangle, Info, CheckCircle2, Bell, ShieldAlert } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import { Alert } from '../../types';
 import { timeAgo } from '../../lib/utils';
+import { Badge } from '../ui/Badge';
 
-const severityConfig = {
-  CRITICAL: { icon: AlertTriangle, color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/30' },
-  WARNING: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30' },
-  INFO: { icon: Info, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/30' },
-};
+const DOT: Record<string, string> = { CRITICAL: '#FF7A6E', WARNING: '#F2B441', INFO: '#8FB8FF' };
 
 export function AlertPanel({ alerts }: { alerts: Alert[] }) {
   return (
-    <div className="glass-panel rounded-2xl p-5 flex flex-col h-full border border-slate-800">
-      <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800/80">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-            <Bell className="w-4 h-4 text-orange-400" />
-          </div>
-          <h3 className="font-bold text-base text-slate-100 tracking-tight">Active Fault Feed</h3>
-        </div>
-        {alerts.length > 0 ? (
-          <span className="text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-full px-2.5 py-0.5 animate-pulse">
-            {alerts.length} Active
-          </span>
-        ) : (
-          <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-0.5">
-            0 Faults
-          </span>
-        )}
+    <section aria-labelledby="fault-feed" className="flex h-full flex-col rounded-xl border border-line bg-surface p-5 md:p-6">
+      <div className="flex items-center justify-between">
+        <h2 id="fault-feed" className="text-xl font-bold tracking-[-.01em]">Fault feed</h2>
+        {alerts.length > 0 ? <Badge variant="critical">{alerts.length} active</Badge> : <Badge variant="success">0 faults</Badge>}
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-2.5 max-h-[420px] pr-1">
+      <div className="mt-4 max-h-[460px] flex-1 overflow-y-auto pr-1">
         {alerts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3 shadow-lg shadow-emerald-950/40">
-              <CheckCircle2 className="w-7 h-7 text-emerald-400" />
-            </div>
-            <p className="text-sm font-bold text-slate-200">Grid Nominal — No Faults</p>
-            <p className="text-xs text-slate-400 mt-1">All solar panel arrays operating at optimal efficiency.</p>
+          <div className="flex flex-col items-center py-14 text-center">
+            <svg width="80" height="40" viewBox="0 0 80 40" aria-hidden className="mb-4">
+              <path d="M4 36 A36 36 0 0 1 76 36" fill="none" stroke="#9BE3BF" strokeWidth="1.5" strokeDasharray="3 4" />
+              <circle cx="40" cy="36" r="9" fill="#9BE3BF" />
+              <line x1="0" y1="36" x2="80" y2="36" stroke="#EFEBE3" strokeOpacity=".4" />
+            </svg>
+            <p className="font-semibold">Grid nominal — no faults</p>
+            <p className="mt-1 text-sm text-muted">Every panel is operating inside its expected band.</p>
           </div>
         ) : (
-          alerts.map((alert) => {
-            const config = severityConfig[alert.severity] || severityConfig.INFO;
-            const Icon = config.icon;
-            return (
-              <div
-                key={alert.id}
-                className={`p-3.5 rounded-xl ${config.bg} border backdrop-blur-md transition-all hover:translate-x-1 duration-200`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`mt-0.5 ${config.color} shrink-0`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-xs font-bold text-slate-200 truncate">{alert.panel?.name || 'Panel Array'}</span>
-                      <span className="text-[11px] font-medium text-slate-400 shrink-0">{timeAgo(alert.createdAt)}</span>
-                    </div>
-                    <p className="text-xs font-medium text-slate-300 line-clamp-2 leading-relaxed">{alert.title}</p>
-                  </div>
+          <ol data-stagger>
+            {alerts.map((alert) => (
+              <li key={alert.id} className="grid grid-cols-[10px_1fr_auto] gap-3 border-t border-line py-4 first:border-t-0">
+                <span className="mt-1.5 h-2 w-2 rounded-sm" style={{ background: DOT[alert.severity] ?? DOT.INFO }} />
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold leading-snug">{alert.title}</p>
+                  <p className="mt-1 truncate text-[13px] text-muted">{alert.panel?.name || 'Panel array'} · {alert.category?.toLowerCase()}</p>
                 </div>
-              </div>
-            );
-          })
+                <span className="font-mono text-[11px] uppercase text-dim">{timeAgo(alert.createdAt)}</span>
+              </li>
+            ))}
+          </ol>
         )}
       </div>
-    </div>
+      <Link href="/dashboard/alerts" className="group mt-2 flex items-center justify-between border-t border-line pt-4 text-sm hover:text-sol">
+        All alerts <ArrowRight className="h-4 w-4 transition-transform duration-500 ease-expo group-hover:translate-x-1" />
+      </Link>
+    </section>
   );
 }

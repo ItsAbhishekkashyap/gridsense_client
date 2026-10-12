@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Bot, User, Loader2, Sparkles, Zap, ShieldAlert, Wrench, ChevronRight } from 'lucide-react';
+import { useState, useRef, useEffect, Fragment } from 'react';
+import { X, ArrowUp } from 'lucide-react';
 import api from '../lib/api';
 
 type Message = {
@@ -10,24 +10,95 @@ type Message = {
 };
 
 const QUICK_PROMPTS = [
-  { label: 'System Status', icon: Zap, query: 'What is my overall system status and total panels?' },
-  { label: 'Active Alerts', icon: ShieldAlert, query: 'Are there any active alerts or faults?' },
-  { label: 'Panel Beta Health', icon: Sparkles, query: 'Can you tell me the health of panel beta?' },
-  { label: 'Error E01 Guide', icon: Wrench, query: 'What does Error Code E01 mean?' },
+  { label: 'System status', query: 'What is my overall system status and total panels?' },
+  { label: 'Active alerts', query: 'Are there any active alerts or faults?' },
+  { label: 'Panel Beta health', query: 'Can you tell me the health of panel beta?' },
+  { label: 'Error E01 guide', query: 'What does Error Code E01 mean?' },
 ];
+
+const OPEN_EVENT = 'gridsense:copilot';
+
+/** Open the copilot from anywhere in the app. */
+export function openCopilot() {
+  window.dispatchEvent(new Event(OPEN_EVENT));
+}
+
+/** Inline markdown: **bold** and `code`. */
+function Inline({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>;
+        if (part.startsWith('`') && part.endsWith('`')) return <code key={i} className="rounded bg-ink/5 px-1 font-mono text-[.9em]">{part.slice(1, -1)}</code>;
+        return <Fragment key={i}>{part}</Fragment>;
+      })}
+    </>
+  );
+}
+
+const cells = (row: string) => row.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+
+/** Small markdown renderer for copilot replies: tables, lists, headings, paragraphs. */
+function RichText({ text }: { text: string }) {
+  const lines = text.split('\n');
+  const blocks: React.ReactNode[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^\s*\|/.test(line)) {
+      const rows: string[] = [];
+      while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(lines[i++]);
+      const body = rows.filter((r) => !/^\s*\|?\s*:?-{2,}/.test(r));
+      const [head, ...rest] = body;
+      blocks.push(
+        <div key={i} className="my-2 overflow-x-auto">
+          <table className="w-full text-left text-[13px]">
+            {head && <thead><tr>{cells(head).map((c, k) => <th key={k} className="border-b border-ink/15 py-1.5 pr-3 font-mono text-[10px] font-normal uppercase tracking-[.06em] text-[#5E5A52]"><Inline text={c} /></th>)}</tr></thead>}
+            <tbody>{rest.map((r, k) => <tr key={k} className="border-b border-ink/10 last:border-0">{cells(r).map((c, j) => <td key={j} className="py-1.5 pr-3 align-top"><Inline text={c} /></td>)}</tr>)}</tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+    if (/^\s*([-*•]|\d+\.)\s+/.test(line)) {
+      const items: string[] = [];
+      const ordered = /^\s*\d+\./.test(line);
+      while (i < lines.length && /^\s*([-*•]|\d+\.)\s+/.test(lines[i])) items.push(lines[i++].replace(/^\s*([-*•]|\d+\.)\s+/, ''));
+      const List = ordered ? 'ol' : 'ul';
+      blocks.push(<List key={i} className={`my-1.5 space-y-1 pl-5 ${ordered ? 'list-decimal' : 'list-disc'} marker:text-sol-deep`}>{items.map((t, k) => <li key={k}><Inline text={t} /></li>)}</List>);
+      continue;
+    }
+    const h = line.match(/^#{1,4}\s+(.*)/);
+    if (h) { blocks.push(<p key={i} className="mt-2 font-semibold"><Inline text={h[1]} /></p>); i++; continue; }
+    if (line.trim() === '') { i++; continue; }
+    blocks.push(<p key={i} className="my-1"><Inline text={line} /></p>);
+    i++;
+  }
+  return <>{blocks}</>;
+}
+
+function CopilotMark({ size = 18, color = '#FF5B1F' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" aria-hidden>
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
 
 export function CopilotChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: '👋 Hello! I am **GridSense AI Copilot**.\n\nI can analyze live telemetry, search hardware manuals, and troubleshoot inverter faults in real-time. How can I help you today?',
+      content: 'Hello! I am **GridSense Copilot**.\n\nI can analyze live telemetry, search hardware manuals, and troubleshoot inverter faults in real-time. How can I help you today?',
     },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -36,6 +107,22 @@ export function CopilotChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  // open via event, Ctrl/Cmd+K; close via Escape
+  useEffect(() => {
+    const open = () => setIsOpen(true);
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setIsOpen((o) => !o); }
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    window.addEventListener(OPEN_EVENT, open);
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener(OPEN_EVENT, open); window.removeEventListener('keydown', onKey); };
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) setTimeout(() => inputRef.current?.focus(), 350);
+  }, [isOpen]);
 
   const handleSend = async (textToSend?: string) => {
     const query = textToSend || input;
@@ -57,12 +144,12 @@ export function CopilotChat() {
           { role: 'assistant', content: response.data.message },
         ]);
       }
-    } catch (error: any) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: '⚠️ I encountered an error connecting to the AI Grid backend. Please verify database connection and try again.',
+          content: 'I encountered an error connecting to the AI Grid backend. Please verify database connection and try again.',
         },
       ]);
     } finally {
@@ -71,148 +158,116 @@ export function CopilotChat() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 font-sans">
-      {/* Chat Window Container */}
+    <>
+      {/* launcher */}
+      {!isOpen && (
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          aria-label="Ask Copilot"
+          className="group fixed bottom-[88px] right-4 z-40 flex h-14 items-center gap-3 rounded-full bg-bone pl-2 pr-2 text-ink shadow-[0_20px_40px_-12px_rgba(0,0,0,.7)] transition-transform duration-500 ease-expo hover:-translate-y-1 sm:pr-5 lg:bottom-7 lg:right-7 animate-[rise_.8s_cubic-bezier(.16,1,.3,1)_.6s_both]"
+        >
+          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-sol">
+            <CopilotMark color="#141412" />
+            <span className="absolute inset-0 animate-ping rounded-full bg-sol opacity-30" />
+          </span>
+          <span className="hidden text-[15px] font-semibold sm:inline">Ask Copilot</span>
+        </button>
+      )}
+
       {isOpen && (
-        <div className="mb-4 w-[400px] h-[580px] glass-panel border border-slate-700/80 rounded-3xl shadow-2xl shadow-black/80 flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 duration-300">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-900/40 via-slate-900 to-orange-900/30 p-4 flex justify-between items-center border-b border-slate-800 backdrop-blur-xl">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-400 p-0.5 shadow-lg shadow-blue-500/30">
-                  <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-blue-400" />
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="GridSense Copilot">
+          <button type="button" aria-label="Close copilot" onClick={() => setIsOpen(false)} className="absolute inset-0 bg-ink/60 backdrop-blur-[2px] animate-fade" />
+
+          <aside className="absolute inset-x-0 bottom-0 top-10 flex flex-col overflow-hidden rounded-t-[20px] bg-paper text-ink shadow-[-30px_0_60px_rgba(0,0,0,.45)] animate-sheet sm:inset-y-0 sm:left-auto sm:right-0 sm:top-0 sm:w-[480px] sm:rounded-none sm:animate-drawer">
+            <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-ink/25 sm:hidden" />
+            <header className="flex items-center justify-between border-b border-ink/10 px-5 py-4 sm:px-6 sm:py-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-ink"><CopilotMark /></span>
+                <div>
+                  <h2 className="text-[17px] font-bold">Copilot</h2>
+                  <p className="font-mono text-[10px] uppercase tracking-[.08em] text-[#5E5A52]">Live telemetry · Hardware manuals</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setIsOpen(false)} aria-label="Close copilot" className="flex h-11 w-11 items-center justify-center rounded-full border border-ink/20 transition-colors hover:bg-ink hover:text-bone">
+                <X className="h-[18px] w-[18px]" />
+              </button>
+            </header>
+
+            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-6 sm:px-6" aria-live="polite">
+              <p className="text-[26px] font-semibold leading-[1.1] tracking-[-.02em]">
+                Ask anything about <span className="font-serif font-normal italic text-sol-deep">your roof.</span>
+              </p>
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`flex animate-[rise_.45s_cubic-bezier(.16,1,.3,1)_both] ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                  <div
+                    className={`max-w-[88%] px-4 py-3 text-[15px] leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'rounded-[18px_18px_4px_18px] bg-ink text-bone'
+                        : 'rounded-[18px_18px_18px_4px] border border-ink/10 bg-white'
+                    }`}
+                  >
+                    <RichText text={msg.content} />
                   </div>
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h3 className="font-bold text-sm text-slate-100 tracking-tight">GridSense Copilot</h3>
-                  <span className="text-[10px] font-semibold tracking-wider text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
-                    AI AGENT
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400">Live Telemetry & Hardware RAG</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all p-2 rounded-xl"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+              ))}
 
-          {/* Quick Action Chips */}
-          <div className="px-4 py-2 bg-slate-950/40 border-b border-slate-800/50 flex gap-2 overflow-x-auto no-scrollbar scroll-smooth">
-            {QUICK_PROMPTS.map((prompt, i) => {
-              const Icon = prompt.icon;
-              return (
+              {isLoading && (
+                <div className="flex items-center gap-3 rounded-[18px_18px_18px_4px] border border-ink/10 bg-white px-4 py-3 w-fit">
+                  <span className="relative flex h-6 w-6 items-center justify-center">
+                    <span className="absolute inset-0 animate-spin rounded-full border border-dashed border-sol-deep" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-sol" />
+                  </span>
+                  <span className="font-mono text-[11px] uppercase tracking-[.08em] text-sol-deep">Reading the grid…</span>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="no-scrollbar flex gap-1.5 overflow-x-auto px-5 pb-3 sm:px-6">
+              {QUICK_PROMPTS.map((prompt) => (
                 <button
-                  key={i}
+                  key={prompt.label}
+                  type="button"
                   disabled={isLoading}
                   onClick={() => handleSend(prompt.query)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-700/80 border border-slate-700/60 rounded-full px-3 py-1 whitespace-nowrap transition-all hover:border-blue-500/40 shrink-0"
+                  className="h-9 shrink-0 rounded-full border border-ink/20 px-3.5 text-[13px] font-medium transition-colors hover:bg-ink hover:text-bone disabled:opacity-40"
                 >
-                  <Icon className="w-3.5 h-3.5 text-blue-400" />
                   {prompt.label}
                 </button>
-              );
-            })}
-          </div>
+              ))}
+            </div>
 
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-slate-950/60 to-slate-900/80">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-              >
-                <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-md ${
-                    msg.role === 'user'
-                      ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white'
-                      : 'bg-slate-800 border border-slate-700/60 text-blue-400'
-                  }`}
-                >
-                  {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                </div>
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-lg shadow-blue-900/20 font-medium'
-                      : 'bg-slate-900/90 text-slate-200 rounded-tl-none border border-slate-800/80 shadow-md'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                </div>
-              </div>
-            ))}
-
-            {isLoading && (
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700/60 flex items-center justify-center shrink-0">
-                  <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                </div>
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-2">
-                  <span className="text-xs text-blue-400 font-semibold tracking-wide uppercase animate-pulse">Analyzing Grid Data</span>
-                  <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" />
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input Area */}
-          <div className="p-3 bg-slate-900/90 border-t border-slate-800 backdrop-blur-xl">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex items-center gap-2 bg-slate-950/80 border border-slate-800 rounded-2xl p-1.5 focus-within:border-blue-500/60 transition-all focus-within:ring-2 focus-within:ring-blue-500/20"
+              className="mx-5 mb-[max(20px,env(safe-area-inset-bottom))] flex items-center gap-2 rounded-full border border-ink/15 bg-white py-1.5 pl-5 pr-1.5 transition-colors focus-within:border-sol sm:mx-6 sm:mb-6"
             >
+              <label htmlFor="copilot-input" className="sr-only">Message</label>
               <input
+                id="copilot-input"
+                ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about panels, alerts, or hardware..."
-                className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 px-3 py-1.5 focus:outline-none"
+                placeholder="Ask about panels, alerts, or hardware…"
+                className="h-11 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink/40"
                 disabled={isLoading}
               />
               <button
                 type="submit"
+                aria-label="Send"
                 disabled={!input.trim() || isLoading}
-                className="w-9 h-9 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-all shadow-md shadow-blue-900/30 shrink-0 active:scale-95"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink text-sol transition-transform active:scale-95 disabled:opacity-35"
               >
-                <Send className="w-4 h-4" />
+                <ArrowUp className="h-[18px] w-[18px]" />
               </button>
             </form>
-          </div>
+          </aside>
         </div>
       )}
-
-      {/* Floating Toggle Button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="relative group bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-500 hover:from-blue-500 hover:to-orange-400 text-white rounded-full p-4 shadow-2xl shadow-blue-600/40 flex items-center gap-3 transition-all duration-300 hover:scale-105 active:scale-95 border border-white/20"
-        >
-          <div className="relative">
-            <MessageSquare className="w-6 h-6" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-400 rounded-full animate-ping" />
-          </div>
-          <span className="font-bold text-sm tracking-tight pr-1">
-            Ask AI Copilot
-          </span>
-          <ChevronRight className="w-4 h-4 opacity-70 group-hover:translate-x-1 transition-transform" />
-        </button>
-      )}
-    </div>
+    </>
   );
 }
